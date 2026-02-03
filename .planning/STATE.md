@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Core Tracking)
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: In progress
-Last activity: 2026-02-03 — Completed 01-01-PLAN.md (Foundation & Core Tracking)
+Last activity: 2026-02-03 — Completed 01-02-PLAN.md (Authentication & Profile)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: ~12 minutes
-- Total execution time: 0.2 hours
+- Total plans completed: 2
+- Average duration: ~22 minutes
+- Total execution time: 0.75 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 1 | 12 min | 12 min |
+| 01 | 2 | 45 min | 22 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (12m)
-- Trend: Establishing baseline
+- Last 5 plans: 01-01 (12m), 01-02 (33m)
+- Trend: Ramping up (auth more complex than setup)
 
 *Updated after each plan completion*
 
@@ -52,6 +52,10 @@ Recent decisions affecting current work:
 - 01-01: NextAuth v5 beta (official Next.js auth, supports App Router)
 - 01-01: Job requirements as text fields (flexible for MVP, can migrate to JSONB later)
 - 01-01: Silent status history logging (analytics without cluttering UI)
+- 01-02: DrizzleAdapter simple config over custom table mapping (NextAuth v5 compatibility)
+- 01-02: Core profile fields (salary, work preference) in users table vs. userQuestionnaire (query efficiency)
+- 01-02: Route groups (auth)/(protected) for auth-based organization (Next.js 15 App Router convention)
+- 01-02: Middleware-based route protection over per-page checks (centralized auth logic)
 
 ### Pending Todos
 
@@ -77,7 +81,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-03 (plan execution)
-Stopped at: Completed 01-01-PLAN.md (Foundation & Core Tracking)
+Stopped at: Completed 01-02-PLAN.md (Authentication & Profile)
 Resume file: None
 
 ---
