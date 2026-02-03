@@ -22,6 +22,11 @@ export const users = pgTable('users', {
   resume: text('resume'), // URL to resume file
   bio: text('bio'),
 
+  // Job search preferences (core profile data)
+  salaryMin: integer('salary_min'),
+  salaryMax: integer('salary_max'),
+  workPreference: text('work_preference'), // "remote", "hybrid", "onsite", "flexible"
+
   // Timestamps
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
