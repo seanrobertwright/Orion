@@ -22,27 +22,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId');
 
-    let query = db
+    // Build where conditions
+    const whereConditions = applicationId
+      ? and(
+          eq(applications.userId, user.id),
+          eq(interviews.applicationId, applicationId)
+        )
+      : eq(applications.userId, user.id);
+
+    const results = await db
       .select({
         interview: interviews,
         application: applications,
       })
       .from(interviews)
       .innerJoin(applications, eq(interviews.applicationId, applications.id))
-      .where(eq(applications.userId, user.id))
+      .where(whereConditions)
       .orderBy(interviews.scheduledAt);
-
-    // Filter by applicationId if provided
-    if (applicationId) {
-      query = query.where(
-        and(
-          eq(applications.userId, user.id),
-          eq(interviews.applicationId, applicationId)
-        )
-      ) as any;
-    }
-
-    const results = await query;
 
     // Format results
     const formattedInterviews = results.map((row) => ({
