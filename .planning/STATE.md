@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Core Tracking)
-Plan: 0 of TBD (awaiting phase planning)
-Status: Ready to plan
-Last activity: 2026-02-02 — Roadmap created with 6 phases covering all 26 v1 requirements
+Plan: 1 of 3 complete
+Status: In progress
+Last activity: 2026-02-03 — Completed 01-01-PLAN.md (Foundation & Core Tracking)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: N/A
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: ~12 minutes
+- Total execution time: 0.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 1 | 12 min | 12 min |
 
 **Recent Trend:**
-- Last 5 plans: N/A
-- Trend: No data yet
+- Last 5 plans: 01-01 (12m)
+- Trend: Establishing baseline
 
 *Updated after each plan completion*
 
@@ -47,12 +47,21 @@ Recent decisions affecting current work:
 - Research phase: Grammy over Telegraf for Telegram bot (better Next.js compatibility)
 - Research phase: Claude API with prompt caching (90% cost reduction on repeated matching)
 - Research phase: Adzuna API for job boards (legitimate, free tier available, avoid scraping legal risks)
+- 01-01: Next.js 15 with src directory and App Router (modern patterns, file-based routing)
+- 01-01: PostgreSQL 16 with Docker (production-grade, easy local setup)
+- 01-01: NextAuth v5 beta (official Next.js auth, supports App Router)
+- 01-01: Job requirements as text fields (flexible for MVP, can migrate to JSONB later)
+- 01-01: Silent status history logging (analytics without cluttering UI)
 
 ### Pending Todos
 
 None yet.
 
 ### Blockers/Concerns
+
+**Phase 1 (Current):**
+- Docker Desktop required for local PostgreSQL development (document in README)
+- Google OAuth credentials needed for NextAuth (email auth available as fallback)
 
 **Phase 2 (Telegram Bot):**
 - Grammy webhook setup with Next.js API routes needs validation during planning
@@ -67,10 +76,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-02 (roadmap creation)
-Stopped at: ROADMAP.md and STATE.md created, all 26 requirements mapped to phases
+Last session: 2026-02-03 (plan execution)
+Stopped at: Completed 01-01-PLAN.md (Foundation & Core Tracking)
 Resume file: None
 
 ---
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-03*
