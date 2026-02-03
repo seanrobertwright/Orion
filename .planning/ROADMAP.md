@@ -34,10 +34,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. User can view dashboard showing total applications, response rate, and interview rate
   7. User can complete initial questionnaire about technical skills and work preferences
   8. User can mark jobs as "interested" or "pass" with reasons to train the system
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] TBD (plans created during `/gsd:plan-phase 1`)
+- [ ] 01-01-PLAN.md — Database & Project Foundation (Next.js, PostgreSQL, Drizzle schema)
+- [ ] 01-02-PLAN.md — Authentication & User Profile (Google OAuth, profile management)
+- [ ] 01-03-PLAN.md — Job & Application Tracking (manual entry, status management, history logging)
+- [ ] 01-04-PLAN.md — Dashboard & Visualization (Kanban board, list view, metrics, search/filter)
+- [ ] 01-05-PLAN.md — Interview Notes & Cover Letters (scheduling, outcome tracking, cover letter linking)
+- [ ] 01-06-PLAN.md — Questionnaire & Feedback System (non-blocking onboarding, job interest tracking)
 
 ### Phase 2: Telegram Bot Integration
 **Goal**: Users can remotely access job search functionality and receive notifications via Telegram
@@ -124,7 +129,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Core Tracking | 0/TBD | Not started | - |
+| 1. Foundation & Core Tracking | 0/6 | Planned | - |
 | 2. Telegram Bot Integration | 0/TBD | Not started | - |
 | 3. Document Management | 0/TBD | Not started | - |
 | 4. AI Resume Processing | 0/TBD | Not started | - |
@@ -133,4 +138,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 ---
 *Roadmap created: 2026-02-02*
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-03*
