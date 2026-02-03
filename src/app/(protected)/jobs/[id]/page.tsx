@@ -116,9 +116,19 @@ export default async function JobDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Interviews Placeholder */}
+        {/* Interviews */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Interviews</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Interviews</h2>
+            {job.application && (
+              <a
+                href={`/jobs/${id}/interviews`}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Manage Interviews →
+              </a>
+            )}
+          </div>
           {job.interviews && job.interviews.length > 0 ? (
             <div className="space-y-3">
               {job.interviews.map((interview: any) => (
@@ -131,9 +141,25 @@ export default async function JobDetailPage({ params }: PageProps) {
                   )}
                 </div>
               ))}
+              <a
+                href={`/jobs/${id}/interviews`}
+                className="inline-block text-sm text-blue-600 hover:text-blue-800 mt-2"
+              >
+                View all {job.interviews.length} interview{job.interviews.length !== 1 ? 's' : ''} →
+              </a>
             </div>
           ) : (
-            <p className="text-gray-500 italic">No interviews scheduled</p>
+            <div>
+              <p className="text-gray-500 italic mb-2">No interviews scheduled</p>
+              {job.application && (
+                <a
+                  href={`/jobs/${id}/interviews`}
+                  className="inline-block text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Schedule an interview →
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
