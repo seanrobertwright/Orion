@@ -9,7 +9,9 @@ import { isApplicationStale } from '@/lib/utils/stale';
 // GET /api/jobs - List user's jobs with application status and stale flag
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const searchParams = request.nextUrl.searchParams;
 
     // Query params
@@ -89,7 +91,9 @@ export async function GET(request: NextRequest) {
 // POST /api/jobs - Create new job
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const body = await request.json();
 
     // Validate input

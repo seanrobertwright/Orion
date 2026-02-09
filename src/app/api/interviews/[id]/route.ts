@@ -26,7 +26,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
 
     // Fetch interview with application details
@@ -71,7 +73,9 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
     const body = await request.json();
 
@@ -145,7 +149,9 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
 
     // Verify interview exists and belongs to user

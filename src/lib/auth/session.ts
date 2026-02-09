@@ -1,20 +1,42 @@
-// Placeholder for auth session helper
-// This will be replaced in plan 01-02 when NextAuth is configured
+import { auth } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 
+/**
+ * Get the current authenticated user from NextAuth session
+ * Returns null if not authenticated
+ */
 export async function getCurrentUser() {
-  // TODO: Replace with actual NextAuth session check in 01-02
-  // For now, return a mock user for development
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return null;
+  }
+
   return {
-    id: '00000000-0000-0000-0000-000000000001',
-    email: 'dev@example.com',
-    name: 'Dev User',
+    id: session.user.id,
+    email: session.user.email || '',
+    name: session.user.name || '',
   };
 }
 
+/**
+ * Require authentication - returns user or unauthorized response
+ * Use this in API routes that require auth
+ *
+ * @example
+ * const authResult = await requireAuth();
+ * if (authResult instanceof NextResponse) return authResult;
+ * const user = authResult;
+ */
 export async function requireAuth() {
   const user = await getCurrentUser();
+
   if (!user) {
-    throw new Error('Unauthorized');
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
+
   return user;
 }

@@ -8,7 +8,9 @@ import { isApplicationStale } from '@/lib/utils/stale';
 // GET /api/applications - List applications with job details, stale flag, status filtering
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const searchParams = request.nextUrl.searchParams;
 
     // Query params

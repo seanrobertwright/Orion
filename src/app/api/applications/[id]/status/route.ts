@@ -17,7 +17,9 @@ export async function PATCH(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
     const body = await request.json();
 

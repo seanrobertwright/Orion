@@ -8,7 +8,9 @@ import { isApplicationStale } from '@/lib/utils/stale';
 // GET /api/dashboard/stats - Return dashboard statistics for authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
 
     // Fetch all applications with their details efficiently
     const allApps = await db

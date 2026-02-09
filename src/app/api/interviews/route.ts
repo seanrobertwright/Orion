@@ -18,7 +18,9 @@ const createInterviewSchema = z.object({
 // GET /api/interviews - List interviews for user
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId');
 
@@ -59,7 +61,9 @@ export async function GET(request: NextRequest) {
 // POST /api/interviews - Create new interview
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const body = await request.json();
 
     // Validate input

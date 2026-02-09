@@ -15,7 +15,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
 
     // Fetch application
@@ -74,7 +76,9 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
     const body = await request.json();
 

@@ -15,7 +15,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
 
     // Fetch job with application
@@ -67,7 +69,9 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
     const body = await request.json();
 
@@ -122,7 +126,9 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
-    const user = await requireAuth();
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
+    const user = authResult;
     const { id } = await context.params;
 
     // Check job exists and belongs to user
