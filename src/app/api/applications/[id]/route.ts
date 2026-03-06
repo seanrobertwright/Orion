@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { applications, jobs, interviews, statusHistory } from '@/db/schema';
 import { updateApplicationSchema } from '@/lib/validations/application';
 import { requireAuth } from '@/lib/auth/session';
+import { validateUuidParam } from '@/lib/validations/api';
 import { eq, and, desc } from 'drizzle-orm';
 
 type RouteContext = {
@@ -19,48 +20,46 @@ export async function GET(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'application id');
 
-    // Fetch application
-    const [application] = await db
-      .select()
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
+
+    // Fetch application with job in a single JOIN
+    const [appWithJob] = await db
+      .select({
+        application: applications,
+        job: jobs,
+      })
       .from(applications)
+      .innerJoin(jobs, eq(applications.jobId, jobs.id))
       .where(and(eq(applications.id, id), eq(applications.userId, user.id)))
       .limit(1);
 
-    if (!application) {
+    if (!appWithJob) {
       return NextResponse.json(
         { error: 'Application not found' },
         { status: 404 }
       );
     }
 
-    // Fetch job
-    const [job] = await db
-      .select()
-      .from(jobs)
-      .where(eq(jobs.id, application.jobId))
-      .limit(1);
-
-    // Fetch interviews
-    const applicationInterviews = await db
-      .select()
-      .from(interviews)
-      .where(eq(interviews.applicationId, id))
-      .orderBy(interviews.scheduledAt);
-
-    // Fetch status history
-    const history = await db
-      .select()
-      .from(statusHistory)
-      .where(eq(statusHistory.applicationId, id))
-      .orderBy(desc(statusHistory.changedAt));
+    // Fetch interviews and status history in parallel
+    const [applicationInterviews, history] = await Promise.all([
+      db.select().from(interviews)
+        .where(eq(interviews.applicationId, id))
+        .orderBy(interviews.scheduledAt),
+      db.select().from(statusHistory)
+        .where(eq(statusHistory.applicationId, id))
+        .orderBy(desc(statusHistory.changedAt)),
+    ]);
 
     return NextResponse.json({
-      ...application,
-      job,
+      ...appWithJob.application,
+      job: appWithJob.job,
       interviews: applicationInterviews,
       statusHistory: history,
-    });
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/applications/[id] error:', error);
     return NextResponse.json(
@@ -80,6 +79,8 @@ export async function PUT(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'application id');
+    if (invalidIdResponse) return invalidIdResponse;
     const body = await request.json();
 
     // Validate input
@@ -93,21 +94,7 @@ export async function PUT(
 
     const data = validation.data;
 
-    // Check application exists and belongs to user
-    const [existingApp] = await db
-      .select()
-      .from(applications)
-      .where(and(eq(applications.id, id), eq(applications.userId, user.id)))
-      .limit(1);
-
-    if (!existingApp) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update application
+    // Build update object
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -119,11 +106,19 @@ export async function PUT(
     if (data.contactPerson !== undefined) updateData.contactPerson = data.contactPerson;
     if (data.referral !== undefined) updateData.referral = data.referral;
 
+    // Update application (single query — userId in WHERE handles ownership check)
     const [updatedApp] = await db
       .update(applications)
       .set(updateData)
-      .where(eq(applications.id, id))
+      .where(and(eq(applications.id, id), eq(applications.userId, user.id)))
       .returning();
+
+    if (!updatedApp) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(updatedApp);
   } catch (error) {

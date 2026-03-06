@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { jobs, applications, interviews } from '@/db/schema';
 import { updateJobSchema } from '@/lib/validations/job';
 import { requireAuth } from '@/lib/auth/session';
+import { validateUuidParam } from '@/lib/validations/api';
 import { eq, and } from 'drizzle-orm';
 
 type RouteContext = {
@@ -19,41 +20,43 @@ export async function GET(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'job id');
 
-    // Fetch job with application
-    const [job] = await db
-      .select()
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
+
+    // Fetch job with application in a single LEFT JOIN
+    const [jobWithApp] = await db
+      .select({
+        job: jobs,
+        application: applications,
+      })
       .from(jobs)
+      .leftJoin(applications, eq(jobs.id, applications.jobId))
       .where(and(eq(jobs.id, id), eq(jobs.userId, user.id)))
       .limit(1);
 
-    if (!job) {
+    if (!jobWithApp) {
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }
       );
     }
 
-    // Fetch application
-    const [application] = await db
-      .select()
-      .from(applications)
-      .where(eq(applications.jobId, id))
-      .limit(1);
-
-    // Fetch interviews
-    const jobInterviews = application
+    // Fetch interviews if application exists
+    const jobInterviews = jobWithApp.application
       ? await db
           .select()
           .from(interviews)
-          .where(eq(interviews.applicationId, application.id))
+          .where(eq(interviews.applicationId, jobWithApp.application.id))
       : [];
 
     return NextResponse.json({
-      ...job,
-      application,
+      ...jobWithApp.job,
+      application: jobWithApp.application,
       interviews: jobInterviews,
-    });
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/jobs/[id] error:', error);
     return NextResponse.json(
@@ -73,6 +76,8 @@ export async function PUT(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'job id');
+    if (invalidIdResponse) return invalidIdResponse;
     const body = await request.json();
 
     // Validate input
@@ -86,29 +91,22 @@ export async function PUT(
 
     const data = validation.data;
 
-    // Check job exists and belongs to user
-    const [existingJob] = await db
-      .select()
-      .from(jobs)
-      .where(and(eq(jobs.id, id), eq(jobs.userId, user.id)))
-      .limit(1);
-
-    if (!existingJob) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update job
+    // Update job (single query — userId in WHERE handles ownership check)
     const [updatedJob] = await db
       .update(jobs)
       .set({
         ...data,
         updatedAt: new Date(),
       })
-      .where(eq(jobs.id, id))
+      .where(and(eq(jobs.id, id), eq(jobs.userId, user.id)))
       .returning();
+
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(updatedJob);
   } catch (error) {
@@ -130,23 +128,24 @@ export async function DELETE(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'job id');
 
-    // Check job exists and belongs to user
-    const [existingJob] = await db
-      .select()
-      .from(jobs)
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
+
+    // Delete job (single query — userId in WHERE handles ownership check)
+    const [deleted] = await db
+      .delete(jobs)
       .where(and(eq(jobs.id, id), eq(jobs.userId, user.id)))
-      .limit(1);
+      .returning();
 
-    if (!existingJob) {
+    if (!deleted) {
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }
       );
     }
-
-    // Delete job (cascade handles application and related records)
-    await db.delete(jobs).where(eq(jobs.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

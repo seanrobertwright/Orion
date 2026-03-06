@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { coverLetters, applications } from '@/db/schema';
 import { requireAuth } from '@/lib/auth/session';
+import { validateUuidParam } from '@/lib/validations/api';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -11,8 +12,8 @@ type RouteContext = {
 
 // Validation schema for updates
 const updateCoverLetterSchema = z.object({
-  title: z.string().min(1, 'Title is required').optional(),
-  content: z.string().min(1, 'Content is required').optional(),
+  title: z.string().min(1, 'Title is required').max(200).optional(),
+  content: z.string().min(1, 'Content is required').max(50000).optional(),
 });
 
 // GET /api/cover-letters/[id] - Fetch full cover letter
@@ -25,6 +26,11 @@ export async function GET(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'cover letter id');
+
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
 
     const [letter] = await db
       .select()
@@ -44,7 +50,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(letter);
+    return NextResponse.json(letter, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/cover-letters/[id] error:', error);
     return NextResponse.json(
@@ -64,6 +70,8 @@ export async function PUT(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'cover letter id');
+    if (invalidIdResponse) return invalidIdResponse;
     const body = await request.json();
 
     // Validate input
@@ -77,27 +85,8 @@ export async function PUT(
 
     const data = validation.data;
 
-    // Verify cover letter exists and belongs to user
-    const [existing] = await db
-      .select()
-      .from(coverLetters)
-      .where(
-        and(
-          eq(coverLetters.id, id),
-          eq(coverLetters.userId, user.id)
-        )
-      )
-      .limit(1);
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Cover letter not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if new title conflicts with another letter
-    if (data.title && data.title !== existing.title) {
+    // Check if new title conflicts with another letter (only when title is being changed)
+    if (data.title) {
       const [conflict] = await db
         .select()
         .from(coverLetters)
@@ -109,7 +98,7 @@ export async function PUT(
         )
         .limit(1);
 
-      if (conflict) {
+      if (conflict && conflict.id !== id) {
         return NextResponse.json(
           { error: 'A cover letter with this title already exists' },
           { status: 409 }
@@ -125,12 +114,19 @@ export async function PUT(
     if (data.title !== undefined) updateData.title = data.title;
     if (data.content !== undefined) updateData.content = data.content;
 
-    // Update cover letter
+    // Update cover letter (single query — userId in WHERE handles ownership check)
     const [updated] = await db
       .update(coverLetters)
       .set(updateData)
-      .where(eq(coverLetters.id, id))
+      .where(and(eq(coverLetters.id, id), eq(coverLetters.userId, user.id)))
       .returning();
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Cover letter not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -152,20 +148,19 @@ export async function DELETE(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'cover letter id');
 
-    // Verify cover letter exists and belongs to user
-    const [existing] = await db
-      .select()
-      .from(coverLetters)
-      .where(
-        and(
-          eq(coverLetters.id, id),
-          eq(coverLetters.userId, user.id)
-        )
-      )
-      .limit(1);
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
 
-    if (!existing) {
+    // Delete cover letter (single query — userId in WHERE handles ownership check)
+    const [deleted] = await db
+      .delete(coverLetters)
+      .where(and(eq(coverLetters.id, id), eq(coverLetters.userId, user.id)))
+      .returning();
+
+    if (!deleted) {
       return NextResponse.json(
         { error: 'Cover letter not found' },
         { status: 404 }
@@ -177,9 +172,6 @@ export async function DELETE(
       .update(applications)
       .set({ coverLetterId: null })
       .where(eq(applications.coverLetterId, id));
-
-    // Delete cover letter
-    await db.delete(coverLetters).where(eq(coverLetters.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
