@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "rlm-navigator": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:\\test\\Orion\\.rlm\\server\\build\\index.js"
+      ],
+      "env": {}
+    }
+  }
+}

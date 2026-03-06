@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IntentEngineContract",
+  "type": "object",
+  "required": [
+    "intent",
+    "plan",
+    "verification"
+  ],
+  "properties": {
+    "intent": {
+      "type": "object",
+      "required": [
+        "id",
+        "domain",
+        "objective",
+        "risk_tier",
+        "version",
+        "goal_hierarchy"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version of this intent spec (e.g., '1.0.0')"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "object"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "value": { "type": "string" },
+              "hard": { "type": "boolean" },
+              "rationale": { "type": "string" }
+            },
+            "required": ["name", "hard"]
+          }
+        },
+        "success": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "metric": { "type": "string" },
+              "threshold": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "required": ["name"]
+          }
+        },
+        "risk_tier": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "goal_hierarchy": {
+          "type": "array",
+          "description": "Ordered list of goals from highest to lowest priority. Higher-priority goals always win in conflicts.",
+          "items": {
+            "type": "object",
+            "required": ["rank", "goal"],
+            "properties": {
+              "rank": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "goal": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "escalation_triggers": {
+          "type": "array",
+          "description": "Conditions under which the agent must stop and ask a human before proceeding.",
+          "items": {
+            "type": "object",
+            "required": ["condition"],
+            "properties": {
+              "condition": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": ["pause", "escalate", "refuse"],
+                "default": "pause"
+              },
+              "rationale": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "verification_commands": {
+          "type": "array",
+          "description": "Runnable commands that verify whether the intent outcomes have been achieved.",
+          "items": {
+            "type": "object",
+            "required": ["command", "description"],
+            "properties": {
+              "command": {
+                "type": "string",
+                "description": "Shell command to run"
+              },
+              "description": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "default": 1.0,
+                "description": "Relative importance for weighted scoring"
+              },
+              "required": {
+                "type": "boolean",
+                "default": true,
+                "description": "If true, failure of this check means the overall verification fails"
+              }
+            }
+          }
+        },
+        "conflict_resolution": {
+          "type": "array",
+          "description": "Rules for resolving conflicts between goals.",
+          "items": {
+            "type": "object",
+            "required": ["condition", "resolution"],
+            "properties": {
+              "condition": {
+                "type": "string",
+                "description": "The conflict scenario (e.g., 'speed vs safety')"
+              },
+              "resolution": {
+                "type": "string",
+                "description": "Which goal wins and what to do"
+              }
+            }
+          }
+        },
+        "changelog": {
+          "type": "array",
+          "description": "Version history for this intent spec.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ambiguity_policy": {
+          "type": "string",
+          "enum": [
+            "clarify",
+            "assume_conservative",
+            "best_effort"
+          ]
+        },
+        "contradiction_policy": {
+          "type": "string",
+          "enum": [
+            "flag_and_pause",
+            "choose_highest_authority",
+            "merge_with_notes"
+          ]
+        },
+        "require_evidence": {
+          "type": "boolean"
+        },
+        "require_human_review": {
+          "type": "boolean"
+        },
+        "output_format": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "personal_intent": {
+          "type": "object",
+          "required": [
+            "modes"
+          ],
+          "properties": {
+            "modes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ship",
+                  "learn",
+                  "explore",
+                  "refactor",
+                  "stabilize",
+                  "mentor",
+                  "document",
+                  "de-risk"
+                ]
+              }
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tradeoffs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "axis",
+                  "preference"
+                ],
+                "properties": {
+                  "axis": {
+                    "type": "string"
+                  },
+                  "preference": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "anti_goals": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "definition_of_done": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "energy_budget": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "time_horizon": {
+              "type": "string",
+              "enum": [
+                "today",
+                "this_week",
+                "this_month",
+                "long_term"
+              ]
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "required": [
+        "id",
+        "intent_id",
+        "steps"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "intent_id": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "tool",
+              "action",
+              "args"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "tool": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string"
+              },
+              "args": {
+                "type": "object"
+              },
+              "depends_on": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "can_fail": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "rationale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "decision",
+        "score"
+      ],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "accept",
+            "revise",
+            "clarify",
+            "escalate",
+            "refuse"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "failed_checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_clarifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verification_results": {
+          "type": "array",
+          "description": "Results from running verification commands.",
+          "items": {
+            "type": "object",
+            "required": ["command", "passed"],
+            "properties": {
+              "command": { "type": "string" },
+              "passed": { "type": "boolean" },
+              "output": { "type": "string" },
+              "weight": { "type": "number" }
+            }
+          }
+        },
+        "goal_hierarchy_respected": {
+          "type": "boolean",
+          "description": "Whether all decisions respected the goal priority ordering."
+        }
+      }
+    }
+  }
+}
