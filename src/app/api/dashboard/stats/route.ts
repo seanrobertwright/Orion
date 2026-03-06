@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { jobs, applications, statusHistory } from '@/db/schema';
+import { applications, statusHistory } from '@/db/schema';
 import { requireAuth } from '@/lib/auth/session';
-import { eq, and, sql, notInArray, inArray } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { isApplicationStale } from '@/lib/utils/stale';
 
 // GET /api/dashboard/stats - Return dashboard statistics for authenticated user
@@ -23,29 +23,25 @@ export async function GET(request: NextRequest) {
       .from(applications)
       .where(eq(applications.userId, user.id));
 
-    // Calculate jobsInQueue (saved status)
-    const jobsInQueue = allApps.filter(app => app.status === 'saved').length;
+    // Calculate all app-based stats in a single pass
+    let jobsInQueue = 0;
+    let totalActive = 0;
+    let staleJobs = 0;
+    let totalApplied = 0;
+    let totalResponses = 0;
+    const applicationIds: string[] = [];
 
-    // Calculate totalActive (NOT rejected or offered)
-    const totalActive = allApps.filter(
-      app => app.status !== 'rejected' && app.status !== 'offered'
-    ).length;
-
-    // Calculate staleJobs (applied status > 14 days)
-    const staleJobs = allApps.filter(app => {
-      if (app.status !== 'applied' || !app.updatedAt) return false;
-      return isApplicationStale(app.status, app.updatedAt);
-    }).length;
-
-    // Calculate totalApplied (applied status or beyond)
-    const totalApplied = allApps.filter(
-      app => ['applied', 'interviewing', 'offered', 'rejected'].includes(app.status)
-    ).length;
+    for (const app of allApps) {
+      applicationIds.push(app.id);
+      if (app.status === 'saved') jobsInQueue++;
+      if (app.status !== 'rejected' && app.status !== 'offered') totalActive++;
+      if (app.status === 'applied' && app.updatedAt && isApplicationStale(app.status, app.updatedAt)) staleJobs++;
+      if (['applied', 'interviewing', 'offered', 'rejected'].includes(app.status)) totalApplied++;
+      if (['interviewing', 'offered', 'rejected'].includes(app.status)) totalResponses++;
+    }
 
     // Calculate interviewed count (apps that reached interviewing status)
     // Check statusHistory where toStatus='interviewing'
-    const applicationIds = allApps.map(app => app.id);
-
     let interviewed = 0;
     if (applicationIds.length > 0) {
       const interviewedApps = await db
@@ -63,11 +59,6 @@ export async function GET(request: NextRequest) {
 
       interviewed = interviewedApps.length;
     }
-
-    // Calculate totalResponses (moved past applied)
-    const totalResponses = allApps.filter(
-      app => ['interviewing', 'offered', 'rejected'].includes(app.status)
-    ).length;
 
     // Calculate rates
     const responseRate = totalApplied > 0
@@ -87,7 +78,7 @@ export async function GET(request: NextRequest) {
       totalResponses,
       responseRate,
       interviewRate,
-    });
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/dashboard/stats error:', error);
     return NextResponse.json(

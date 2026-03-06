@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { JobCard } from '@/components/jobs/JobCard';
 import { SearchFilter, FilterState } from '@/components/dashboard/SearchFilter';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ type Job = {
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [filters, setFilters] = useState<FilterState>({ search: '', status: [], location: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,9 +40,9 @@ export default function JobsPage() {
       try {
         const response = await fetch('/api/jobs');
         if (!response.ok) throw new Error('Failed to fetch jobs');
-        const data = await response.json();
+        const payload = await response.json();
+        const data = Array.isArray(payload) ? payload : payload.data || [];
         setJobs(data);
-        setFilteredJobs(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load jobs');
       } finally {
@@ -53,36 +53,33 @@ export default function JobsPage() {
     fetchJobs();
   }, []);
 
-  const handleFilterChange = (filters: FilterState) => {
-    let filtered = [...jobs];
-
-    // Filter by search
+  const filteredJobs = useMemo(() => {
+    let result = jobs;
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(
+      result = result.filter(
         (job) =>
           job.title.toLowerCase().includes(searchLower) ||
           job.company.toLowerCase().includes(searchLower)
       );
     }
-
-    // Filter by status
     if (filters.status.length > 0) {
-      filtered = filtered.filter(
+      result = result.filter(
         (job) => job.applicationStatus && filters.status.includes(job.applicationStatus)
       );
     }
-
-    // Filter by location
     if (filters.location) {
       const locationLower = filters.location.toLowerCase();
-      filtered = filtered.filter(
+      result = result.filter(
         (job) => job.location?.toLowerCase().includes(locationLower)
       );
     }
+    return result;
+  }, [jobs, filters]);
 
-    setFilteredJobs(filtered);
-  };
+  const handleFilterChange = useCallback((newFilters: FilterState) => {
+    setFilters(newFilters);
+  }, []);
 
   if (loading) {
     return (

@@ -54,7 +54,8 @@ export default function InterviewsPage() {
           `/api/interviews?applicationId=${jobData.application.id}`
         );
         if (interviewsResponse.ok) {
-          const interviewsData = await interviewsResponse.json();
+          const payload = await interviewsResponse.json();
+          const interviewsData = Array.isArray(payload) ? payload : payload.data || [];
           setInterviews(interviewsData);
         }
       }

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { applications, jobs } from '@/db/schema';
 import { requireAuth } from '@/lib/auth/session';
-import { eq, and } from 'drizzle-orm';
+import {
+  parseOptionalApplicationStatus,
+  parsePaginationParams,
+} from '@/lib/validations/api';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { isApplicationStale } from '@/lib/utils/stale';
 
 // GET /api/applications - List applications with job details, stale flag, status filtering
@@ -15,13 +19,37 @@ export async function GET(request: NextRequest) {
 
     // Query params
     const status = searchParams.get('status');
+    const { value: pagination, error: paginationError } = parsePaginationParams(
+      searchParams.get('page'),
+      searchParams.get('limit')
+    );
+    const { value: statusValue, error: statusError } = parseOptionalApplicationStatus(status);
+
+    if (paginationError) {
+      return paginationError;
+    }
+
+    if (statusError) {
+      return statusError;
+    }
+    if (!pagination) {
+      return NextResponse.json({ error: 'Invalid pagination parameters' }, { status: 400 });
+    }
 
     // Build where conditions
     const conditions: any[] = [eq(applications.userId, user.id)];
 
-    if (status) {
-      conditions.push(eq(applications.status, status as any));
+    if (statusValue) {
+      conditions.push(eq(applications.status, statusValue));
     }
+    const whereCondition = and(...conditions);
+
+    const [countRow] = await db
+      .select({
+        total: sql<number>`cast(count(*) as int)`,
+      })
+      .from(applications)
+      .where(whereCondition);
 
     // Query applications with job details
     const results = await db
@@ -44,8 +72,10 @@ export async function GET(request: NextRequest) {
       })
       .from(applications)
       .innerJoin(jobs, eq(applications.jobId, jobs.id))
-      .where(and(...conditions))
-      .orderBy(applications.updatedAt);
+      .where(whereCondition)
+      .orderBy(desc(applications.updatedAt))
+      .limit(pagination.limit)
+      .offset(pagination.offset);
 
     // Add stale flag
     const applicationsWithStale = results.map((app) => ({
@@ -53,7 +83,17 @@ export async function GET(request: NextRequest) {
       isStale: isApplicationStale(app.status, app.updatedAt),
     }));
 
-    return NextResponse.json(applicationsWithStale);
+    const total = countRow?.total ?? 0;
+
+    return NextResponse.json({
+      data: applicationsWithStale,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        total,
+        totalPages: Math.ceil(total / pagination.limit),
+      },
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/applications error:', error);
     return NextResponse.json(

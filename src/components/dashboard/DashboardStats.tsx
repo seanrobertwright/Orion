@@ -21,6 +21,18 @@ type DashboardStatsData = {
   interviewRate: number;
 };
 
+const colorClasses = {
+  blue: 'bg-blue-50 text-blue-600',
+  green: 'bg-green-50 text-green-600',
+  purple: 'bg-purple-50 text-purple-600',
+  orange: 'bg-orange-50 text-orange-600',
+  teal: 'bg-teal-50 text-teal-600',
+  indigo: 'bg-indigo-50 text-indigo-600',
+  pink: 'bg-pink-50 text-pink-600',
+  red: 'bg-red-50 text-red-600',
+  gray: 'bg-gray-50 text-gray-600',
+};
+
 export function DashboardStats() {
   const [stats, setStats] = useState<DashboardStatsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,18 +135,6 @@ export function DashboardStats() {
       description: 'Need follow-up'
     },
   ];
-
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    teal: 'bg-teal-50 text-teal-600',
-    indigo: 'bg-indigo-50 text-indigo-600',
-    pink: 'bg-pink-50 text-pink-600',
-    red: 'bg-red-50 text-red-600',
-    gray: 'bg-gray-50 text-gray-600',
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

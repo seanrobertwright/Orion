@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { coverLetters, applications } from '@/db/schema';
 import { requireAuth } from '@/lib/auth/session';
-import { eq, and, sql } from 'drizzle-orm';
+import { parsePaginationParams } from '@/lib/validations/api';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Validation schema
 const createCoverLetterSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  content: z.string().min(1, 'Content is required'),
+  title: z.string().min(1, 'Title is required').max(200),
+  content: z.string().min(1, 'Content is required').max(50000),
 });
 
 // GET /api/cover-letters - List all cover letters for user
@@ -17,6 +18,25 @@ export async function GET(request: NextRequest) {
     const authResult = await requireAuth();
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
+    const searchParams = request.nextUrl.searchParams;
+    const { value: pagination, error: paginationError } = parsePaginationParams(
+      searchParams.get('page'),
+      searchParams.get('limit')
+    );
+
+    if (paginationError) {
+      return paginationError;
+    }
+    if (!pagination) {
+      return NextResponse.json({ error: 'Invalid pagination parameters' }, { status: 400 });
+    }
+
+    const [countRow] = await db
+      .select({
+        total: sql<number>`cast(count(*) as int)`,
+      })
+      .from(coverLetters)
+      .where(eq(coverLetters.userId, user.id));
 
     // Fetch cover letters with usage count
     const results = await db
@@ -32,7 +52,9 @@ export async function GET(request: NextRequest) {
       .leftJoin(applications, eq(applications.coverLetterId, coverLetters.id))
       .where(eq(coverLetters.userId, user.id))
       .groupBy(coverLetters.id)
-      .orderBy(coverLetters.createdAt);
+      .orderBy(desc(coverLetters.createdAt))
+      .limit(pagination.limit)
+      .offset(pagination.offset);
 
     // Format with preview (first 200 chars)
     const formatted = results.map((letter) => ({
@@ -44,7 +66,17 @@ export async function GET(request: NextRequest) {
       usageCount: letter.usageCount || 0,
     }));
 
-    return NextResponse.json(formatted);
+    const total = countRow?.total ?? 0;
+
+    return NextResponse.json({
+      data: formatted,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        total,
+        totalPages: Math.ceil(total / pagination.limit),
+      },
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/cover-letters error:', error);
     return NextResponse.json(

@@ -6,7 +6,14 @@ export default auth((req) => {
   const isAuthenticated = !!req.auth;
 
   // Protected routes
-  const protectedRoutes = ['/dashboard', '/profile', '/jobs'];
+  const protectedRoutes = [
+    '/dashboard',
+    '/profile',
+    '/jobs',
+    '/cover-letters',
+    '/interviews',
+    '/questionnaire',
+  ];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
   // Redirect unauthenticated users to login

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { interviews, applications } from '@/db/schema';
 import { requireAuth } from '@/lib/auth/session';
-import { eq, and, desc } from 'drizzle-orm';
+import { parseOptionalUuid, parsePaginationParams } from '@/lib/validations/api';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Validation schema
@@ -10,9 +11,9 @@ const createInterviewSchema = z.object({
   applicationId: z.string().uuid(),
   scheduledAt: z.string().datetime(),
   type: z.enum(['phone_screen', 'technical', 'behavioral', 'system_design', 'onsite', 'final', 'other']),
-  notes: z.string().optional(),
-  location: z.string().optional(),
-  interviewers: z.string().optional(),
+  notes: z.string().max(10000).optional(),
+  location: z.string().max(500).optional(),
+  interviewers: z.string().max(500).optional(),
 });
 
 // GET /api/interviews - List interviews for user
@@ -23,14 +24,41 @@ export async function GET(request: NextRequest) {
     const user = authResult;
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId');
+    const { value: pagination, error: paginationError } = parsePaginationParams(
+      searchParams.get('page'),
+      searchParams.get('limit')
+    );
+    const { value: applicationIdValue, error: applicationIdError } = parseOptionalUuid(
+      applicationId,
+      'applicationId'
+    );
+
+    if (paginationError) {
+      return paginationError;
+    }
+
+    if (applicationIdError) {
+      return applicationIdError;
+    }
+    if (!pagination) {
+      return NextResponse.json({ error: 'Invalid pagination parameters' }, { status: 400 });
+    }
 
     // Build where conditions
-    const whereConditions = applicationId
+    const whereConditions = applicationIdValue
       ? and(
           eq(applications.userId, user.id),
-          eq(interviews.applicationId, applicationId)
+          eq(interviews.applicationId, applicationIdValue)
         )
       : eq(applications.userId, user.id);
+
+    const [countRow] = await db
+      .select({
+        total: sql<number>`cast(count(*) as int)`,
+      })
+      .from(interviews)
+      .innerJoin(applications, eq(interviews.applicationId, applications.id))
+      .where(whereConditions);
 
     const results = await db
       .select({
@@ -40,7 +68,9 @@ export async function GET(request: NextRequest) {
       .from(interviews)
       .innerJoin(applications, eq(interviews.applicationId, applications.id))
       .where(whereConditions)
-      .orderBy(interviews.scheduledAt);
+      .orderBy(desc(interviews.scheduledAt))
+      .limit(pagination.limit)
+      .offset(pagination.offset);
 
     // Format results
     const formattedInterviews = results.map((row) => ({
@@ -48,7 +78,17 @@ export async function GET(request: NextRequest) {
       application: row.application,
     }));
 
-    return NextResponse.json(formattedInterviews);
+    const total = countRow?.total ?? 0;
+
+    return NextResponse.json({
+      data: formattedInterviews,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        total,
+        totalPages: Math.ceil(total / pagination.limit),
+      },
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/interviews error:', error);
     return NextResponse.json(

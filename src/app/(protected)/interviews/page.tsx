@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { InterviewCard } from '@/components/interviews/InterviewCard';
 import { Calendar, Plus } from 'lucide-react';
 
@@ -34,7 +34,8 @@ export default function InterviewsPage() {
       try {
         const response = await fetch('/api/interviews');
         if (!response.ok) throw new Error('Failed to fetch interviews');
-        const data = await response.json();
+        const payload = await response.json();
+        const data = Array.isArray(payload) ? payload : payload.data || [];
         setInterviews(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load interviews');
@@ -74,13 +75,13 @@ export default function InterviewsPage() {
   }
 
   // Group interviews by upcoming vs past
-  const now = new Date();
-  const upcomingInterviews = interviews.filter(
-    (interview) => new Date(interview.scheduledAt) >= now
-  );
-  const pastInterviews = interviews.filter(
-    (interview) => new Date(interview.scheduledAt) < now
-  );
+  const { upcomingInterviews, pastInterviews } = useMemo(() => {
+    const cutoff = new Date();
+    return {
+      upcomingInterviews: interviews.filter(i => new Date(i.scheduledAt) >= cutoff),
+      pastInterviews: interviews.filter(i => new Date(i.scheduledAt) < cutoff),
+    };
+  }, [interviews]);
 
   return (
     <div>

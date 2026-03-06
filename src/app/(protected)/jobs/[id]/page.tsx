@@ -1,34 +1,61 @@
-import { notFound } from 'next/navigation';
+import { db } from '@/db';
+import { applications, interviews, jobs } from '@/db/schema';
+import { auth } from '@/lib/auth';
 import { StatusBadge } from '@/components/applications/StatusBadge';
 import { StatusSelect } from '@/components/applications/StatusSelect';
+import { and, eq } from 'drizzle-orm';
+import { notFound, redirect } from 'next/navigation';
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function getJob(id: string) {
-  // In a real app, this would use the authenticated API
-  // For now, we'll return a mock structure
-  // The actual API call will work once auth is integrated
-  try {
-    const response = await fetch(`http://localhost:3000/api/jobs/${id}`, {
-      cache: 'no-store',
-    });
+type InterviewItem = {
+  id: string;
+  type: string;
+  scheduledAt: Date | null;
+};
 
-    if (!response.ok) {
-      return null;
-    }
+async function getJob(userId: string, id: string) {
+  const [job] = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, id), eq(jobs.userId, userId)))
+    .limit(1);
 
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to fetch job:', error);
+  if (!job) {
     return null;
   }
+
+  const [application] = await db
+    .select()
+    .from(applications)
+    .where(and(eq(applications.jobId, id), eq(applications.userId, userId)))
+    .limit(1);
+
+  const jobInterviews = application
+    ? await db
+        .select()
+        .from(interviews)
+        .where(eq(interviews.applicationId, application.id))
+    : [];
+
+  return {
+    ...job,
+    application,
+    interviews: jobInterviews,
+  };
 }
 
 export default async function JobDetailPage({ params }: PageProps) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
+
   const { id } = await params;
-  const job = await getJob(id);
+  const job = await getJob(session.user.id, id);
 
   if (!job) {
     notFound();
@@ -131,7 +158,7 @@ export default async function JobDetailPage({ params }: PageProps) {
           </div>
           {job.interviews && job.interviews.length > 0 ? (
             <div className="space-y-3">
-              {job.interviews.map((interview: any) => (
+              {job.interviews.map((interview: InterviewItem) => (
                 <div key={interview.id} className="border-l-4 border-blue-500 pl-4">
                   <p className="font-medium text-gray-900">{interview.type}</p>
                   {interview.scheduledAt && (

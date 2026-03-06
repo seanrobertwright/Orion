@@ -164,6 +164,7 @@ export const applications = pgTable('applications', {
   userIdIdx: index('applications_user_id_idx').on(table.userId),
   jobIdIdx: index('applications_job_id_idx').on(table.jobId),
   statusIdx: index('applications_status_idx').on(table.status),
+  userIdStatusIdx: index('applications_user_id_status_idx').on(table.userId, table.status),
 }));
 
 // ============================================================================
@@ -246,23 +247,17 @@ export const userQuestionnaire = pgTable('user_questionnaire', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
 
+  // Technical skills and experience
+  technicalSkills: text('technical_skills'), // JSON array - tag input
+  yearsExperience: integer('years_experience'),
+
   // Career preferences
-  desiredRoles: text('desired_roles'), // JSON array
-  desiredIndustries: text('desired_industries'), // JSON array
-  desiredLocations: text('desired_locations'), // JSON array
-  remotePreference: text('remote_preference'), // "remote", "hybrid", "onsite", "flexible"
+  preferredRoles: text('preferred_roles'), // JSON array - Software Engineer, DevOps, etc.
+  preferredIndustries: text('preferred_industries'), // JSON array - Tech, Finance, Healthcare, etc.
+  careerGoals: text('career_goals'), // textarea
 
-  // Compensation
-  desiredSalaryMin: integer('desired_salary_min'),
-  desiredSalaryMax: integer('desired_salary_max'),
-
-  // Experience
-  yearsOfExperience: integer('years_of_experience'),
-  keySkills: text('key_skills'), // JSON array
-
-  // Job search preferences
-  jobSearchStatus: text('job_search_status'), // "actively_looking", "passively_looking", "not_looking"
-  startDate: text('start_date'), // "immediate", "2_weeks", "1_month", "flexible"
+  // Completion tracking
+  completedAt: timestamp('completed_at', { mode: 'date' }),
 
   // Timestamps
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),

@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { applications, statusHistory } from '@/db/schema';
 import { changeStatusSchema } from '@/lib/validations/application';
 import { requireAuth } from '@/lib/auth/session';
+import { validateUuidParam } from '@/lib/validations/api';
 import { eq, and } from 'drizzle-orm';
 
 type RouteContext = {
@@ -21,6 +22,8 @@ export async function PATCH(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'application id');
+    if (invalidIdResponse) return invalidIdResponse;
     const body = await request.json();
 
     // Validate input
@@ -57,31 +60,31 @@ export async function PATCH(
 
     const now = new Date();
 
-    // CRITICAL: Log status change to history BEFORE updating application
-    await db.insert(statusHistory).values({
-      applicationId: id,
-      fromStatus: oldStatus,
-      toStatus: newStatus,
-      changedAt: now,
+    const updatedApp = await db.transaction(async (tx) => {
+      await tx.insert(statusHistory).values({
+        applicationId: id,
+        fromStatus: oldStatus,
+        toStatus: newStatus,
+        changedAt: now,
+      });
+
+      const updateData: any = {
+        status: newStatus,
+        updatedAt: now,
+      };
+
+      if (newStatus === 'applied' && !currentApp.appliedDate) {
+        updateData.appliedDate = now;
+      }
+
+      const [updated] = await tx
+        .update(applications)
+        .set(updateData)
+        .where(and(eq(applications.id, id), eq(applications.userId, user.id)))
+        .returning();
+
+      return updated;
     });
-
-    // Prepare update data
-    const updateData: any = {
-      status: newStatus,
-      updatedAt: now,
-    };
-
-    // If changing TO 'applied' and appliedDate is null, set it
-    if (newStatus === 'applied' && !currentApp.appliedDate) {
-      updateData.appliedDate = now;
-    }
-
-    // Update application
-    const [updatedApp] = await db
-      .update(applications)
-      .set(updateData)
-      .where(eq(applications.id, id))
-      .returning();
 
     return NextResponse.json({
       ...updatedApp,

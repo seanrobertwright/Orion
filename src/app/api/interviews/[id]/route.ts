@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { interviews, applications } from '@/db/schema';
 import { requireAuth } from '@/lib/auth/session';
+import { validateUuidParam } from '@/lib/validations/api';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -13,11 +14,11 @@ type RouteContext = {
 const updateInterviewSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   type: z.enum(['phone_screen', 'technical', 'behavioral', 'system_design', 'onsite', 'final', 'other']).optional(),
-  notes: z.string().optional(),
-  location: z.string().optional(),
-  interviewers: z.string().optional(),
+  notes: z.string().max(10000).optional(),
+  location: z.string().max(500).optional(),
+  interviewers: z.string().max(500).optional(),
   outcome: z.enum(['pending', 'passed', 'failed', 'cancelled']).optional(),
-  feedback: z.string().optional(),
+  feedback: z.string().max(10000).optional(),
 });
 
 // GET /api/interviews/[id] - Fetch single interview
@@ -30,6 +31,11 @@ export async function GET(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'interview id');
+
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
 
     // Fetch interview with application details
     const [result] = await db
@@ -57,7 +63,7 @@ export async function GET(
     return NextResponse.json({
       ...result.interview,
       application: result.application,
-    });
+    }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (error) {
     console.error('GET /api/interviews/[id] error:', error);
     return NextResponse.json(
@@ -77,6 +83,8 @@ export async function PUT(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'interview id');
+    if (invalidIdResponse) return invalidIdResponse;
     const body = await request.json();
 
     // Validate input
@@ -130,7 +138,7 @@ export async function PUT(
     const [updated] = await db
       .update(interviews)
       .set(updateData)
-      .where(eq(interviews.id, id))
+      .where(and(eq(interviews.id, id), eq(interviews.applicationId, existing.interview.applicationId)))
       .returning();
 
     return NextResponse.json(updated);
@@ -153,6 +161,11 @@ export async function DELETE(
     if (authResult instanceof NextResponse) return authResult;
     const user = authResult;
     const { id } = await context.params;
+    const invalidIdResponse = validateUuidParam(id, 'interview id');
+
+    if (invalidIdResponse) {
+      return invalidIdResponse;
+    }
 
     // Verify interview exists and belongs to user
     const [existing] = await db
@@ -178,7 +191,7 @@ export async function DELETE(
     }
 
     // Delete interview
-    await db.delete(interviews).where(eq(interviews.id, id));
+    await db.delete(interviews).where(and(eq(interviews.id, id), eq(interviews.applicationId, existing.interview.applicationId)));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -32,7 +32,8 @@ export default function CoverLettersPage() {
       setIsLoading(true);
       const response = await fetch('/api/cover-letters');
       if (response.ok) {
-        const data = await response.json();
+        const payload = await response.json();
+        const data = Array.isArray(payload) ? payload : payload.data || [];
         setLetters(data);
       }
     } catch (error) {
